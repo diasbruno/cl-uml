@@ -7,25 +7,36 @@
 (defvar w 512)
 (defvar h 512)
 
-;; (xlib:keysym->character *display* (xlib:keycode->keysym *display* code 0))
 
-(defun render->button (context)
+(defun render->button (context &key (x 0) (y 0) (w 0) (h 0))
   (cl-cairo2:set-source-rgba 1 1 1 1 context)
-  (cl-cairo2:rectangle 100 100 100 100 context)
+  (cl-cairo2:rectangle x y w h context)
   (cl-cairo2:fill-path context)
-  (cl-cairo2:set-source-rgba 0 0 0 1 context)
-  (cl-cairo2:stroke context))
+  ;; (cl-cairo2:set-source-rgba 0 0 0 1 context)
+  ;; (cl-cairo2:set-line-width 1 context)
+  ;; (cl-cairo2:stroke context)
+  )
+
+(defun render->label-centered (text context &key (x 0) (y 0) (w 0) (h 0))
+  (let ((extents nil))
+    (setf extents (cl-cairo2:get-text-extents text context))
+    (cl-cairo2:set-source-rgba 0 0 0 1 context)
+    (cl-cairo2:move-to (- (+ x (* w 0.5))
+                          (* (cl-cairo2:text-width extents) 0.5))
+                       (- (+ y (* h 0.5))
+                          (* (cl-cairo2:text-y-bearing extents) 0.5))
+                       context)
+    (cl-cairo2:show-text text context)))
+
+(defun render->labeled-button (text context &key (x 0) (y 0) (w 0) (h 0))
+  (render->button context :x x :y y :w w :h h)
+  (render->label-centered text context :x x :y y :w w :h h))
 
 (defun render (w h surface context)
-  (cl-cairo2:set-source-rgba 1 1 1 1 context)
+  (cl-cairo2:set-source-rgba 0 0.5 0.5 1 context)
   (cl-cairo2:rectangle 0 0 w h context)
   (cl-cairo2:fill-path context)
-
-  (render->button context)
-
-  (cl-cairo2:set-source-rgba 1 0 0 1 context)
-  (cl-cairo2:rectangle 200 200 100 100 context)
-  (cl-cairo2:fill-path context))
+  (render->labeled-button "utf8" context :x 200 :y 200 :w 200 :h 32))
 
 (defun main ()
   (let* ((display (xcb.clx:open-display ""))
@@ -59,6 +70,8 @@
      (xcb.clx:display-force-output display))
     (let* ((surface (cl-cairo2:create-xcb-surface xwin))
            (context (cl-cairo2:create-context surface)))
+      (cl-cairo2:select-font-face "monospace" :normal :normal context)
+      (cl-cairo2:set-font-size 12.0 context)
       (unwind-protect
           (xcb.clx:event-case
            (display :force-output-p t :discard-p t)
